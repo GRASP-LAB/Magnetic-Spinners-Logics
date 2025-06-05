@@ -41,24 +41,24 @@ class NOT:
 @dataclass
 class OAI:
     # OR gate
-    A: Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=0.0, y=0.0))
-    B: Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=2 * Lx, y=0))
+    A: Spinner = field(default_factory=lambda: Spinner(number=1, theta=np.pi/2, x=0.0, y=0.0))
+    B: Spinner = field(default_factory=lambda: Spinner(number=1, theta=np.pi/2, x=2 * Lx, y=0))
     AB: Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=Lx, y=-Ly))
 
+    C5 : Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=0, y=-2 * Ly))
+    C6 : Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=2 * Lx, y=-2 * Ly))
+    C7 : Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=1 * Lx, y=-3 * Ly))
+
+
     # AND gate
-    A2: Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=0.0 + 3 * Lx, y=0.0 - 7 * Ly))
-    C: Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=2 * Lx + 3 * Lx, y=0 - 7 * Ly))
-    B2: Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=Lx + 3 * Lx, y=Ly - 7 * Ly))
+    A2: Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=0.0 + 3 * Lx, y=0.0 - 5* Ly))
+    C: Spinner = field(default_factory=lambda: Spinner(number=1, theta=np.pi/2, x=2 * Lx + 3 * Lx, y=0 - 5 * Ly))
+    F: Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=Lx + 3 * Lx, y=- 4* Ly))
 
     # cable
-    C1 : Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=Lx, y=-3 * Ly))
-    C2 : Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=2 * Lx, y=-4 * Ly))
-    C3 : Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=2 * Lx, y=-6 * Ly))
-    C4 :Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=Lx + 3 * Lx, y=Ly - 5 * Ly))
+    C1 : Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=2*Lx, y=-6 * Ly))
+    C2 : Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=2 * Lx, y=-4* Ly))
 
-    # NOT gate
-    A3 :Spinner = field(default_factory=lambda: Spinner(number=1, theta=0.0, x=Lx + 4 * Lx, y=Ly - 4 * Ly))
-    F :Spinner = field(default_factory=lambda: Spinner(number=-1, theta=0.0, x=Lx + 4 * Lx, y=Ly - 2 * Ly))
 
     N: int = 0  # temporaire
 
@@ -95,19 +95,19 @@ def U(spinner1: Spinner, spinner2: Spinner) -> float:
             r1 = np.array([
                 x1 + (R + l/2) * np.cos(angle1),
                 y1 + (R + l/2) * np.sin(angle1)
-            ])
+            ]) / L_ref
 
             r2 = np.array([
                 x2 + (R + l/2) * np.cos(angle2),
                 y2 + (R + l/2) * np.sin(angle2)
-            ])
+            ]) / L_ref
 
             # Vecteurs unitaires selon angles décalés
             u1 = np.array([np.cos(angle1), np.sin(angle1)])
             u2 = np.array([np.cos(angle2), np.sin(angle2)])
 
             r_diff = r2 - r1
-            norm_r_diff = np.linalg.norm(r_diff) / L_ref
+            norm_r_diff = np.linalg.norm(r_diff) 
 
             if norm_r_diff == 0:
                 continue  # éviter division par zéro
@@ -191,7 +191,7 @@ def plot_and_gate(gate):
 
     plt.show()
 
-def simulated_annealing(gate, T_init=1, T_min=0.0001, alpha=0.5, max_iter=1000):
+def simulated_annealing(gate, T_init=1, T_min=0.0001, alpha=0.5, max_iter=500):
     """
     Recuit simulé sur les angles theta des spinners dans la gate.
     T_init : température initiale
@@ -205,7 +205,11 @@ def simulated_annealing(gate, T_init=1, T_min=0.0001, alpha=0.5, max_iter=1000):
    
     T = T_init
     
-    spinners = [getattr(current_gate, f.name) for f in fields(current_gate) if isinstance(getattr(current_gate, f.name), Spinner)]
+    spinners = [
+        getattr(current_gate, f.name)
+        for f in fields(current_gate)
+        if isinstance(getattr(current_gate, f.name), Spinner) and f.name not in {'A', 'B', 'C'}
+    ]
 
     while T > T_min:
         for _ in range(max_iter):
@@ -241,7 +245,7 @@ def simulated_annealing(gate, T_init=1, T_min=0.0001, alpha=0.5, max_iter=1000):
     return current_gate, total_energy(current_gate)
 
 # Exemple d'utilisation
-and_gate = NOT()
+and_gate = OAI()
 
 print("Avant recuit:")
 print(f"Energie initiale : {total_energy(and_gate)}")
