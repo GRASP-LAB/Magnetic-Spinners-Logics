@@ -367,6 +367,7 @@ def simulated_annealing(gate, T_init=1, T_min=0.0001, alpha=0.9, max_iter=500):
     return current_gate, total_energy_nearest_neighbors(current_gate), current_gate.F.theta
 
 
+
 def _run_single_simulation(A, B): # <-- Changed signature
     """
     Performs a single simulated annealing run for given A and B parameters.
@@ -388,6 +389,28 @@ def _run_single_simulation(A, B): # <-- Changed signature
     )
     return ang
 
+def _run_single_simulation_2(A, B):
+    """
+    Effectue un recuit simulé pour un XOR2 avec les paramètres A et B.
+    Retourne un dictionnaire contenant les positions finales et l'énergie.
+    """
+    gate_to_simulate = XOR2()
+    gate_to_simulate.A.theta = A
+    gate_to_simulate.B.theta = B
+    gate_to_simulate.C.theta = A
+    gate_to_simulate.D.theta = B
+
+    # Recuit simulé
+    optimized_gate, _, _ = simulated_annealing(
+        gate_to_simulate,
+        T_init=0.5,
+        T_min=0.001,
+        alpha=0.5,
+        max_iter=100 * gate_to_simulate.N
+    )
+
+    return optimized_gate  # Return the optimized gate object directly
+
 def distri(A, B, N):
     """
     Distributes simulated annealing runs in parallel (max 6 processes)
@@ -402,6 +425,7 @@ def distri(A, B, N):
 
     # Define the maximum number of processes to use
     max_processes = 6
+    
 
     # Create a list of parameters for each simulation run.
     simulation_params = [(A, B) for _ in range(N)]
@@ -419,6 +443,34 @@ def distri(A, B, N):
 
     print(f"Finished simulation and saved all {len(all_angs)} angles to {filename}")
 
+def distri2(A, B, N):
+    print(f"Starting parallel simulation for A={A}, B={B}, N={N} iterations...")
+    max_processes = 6
+    simulation_params = [(A, B) for _ in range(N)]
+
+    with multiprocessing.Pool(processes=max_processes) as pool:
+        optimized_gates = pool.starmap(_run_single_simulation_2, simulation_params)
+
+    filename = f"XOR2_A{A}_B{B}_F1_100state.txt"
+
+    # Trouvons tous les noms d'attributs avec .theta dans la première porte (pour l'ordre des colonnes)
+    sample_gate = optimized_gates[0]
+    attr_names = [attr for attr in dir(sample_gate) if hasattr(getattr(sample_gate, attr), 'theta')]
+
+    with open(filename, "w") as f:
+        # Écrire l'en-tête des colonnes
+        header = "\t".join(attr_names + ["Energy"])
+        f.write("Run\t" + header + "\n")
+
+        for i, gate in enumerate(optimized_gates):
+            values = [f"{getattr(gate, attr).theta:.4f}" for attr in attr_names]
+            energy = total_energy_nearest_neighbors(gate)
+            values.append(f"{energy:.4f}")
+            f.write(f"{i+1}\t" + "\t".join(values) + "\n")
+
+    print(f"Finished simulation and saved all {N} configurations to '{filename}'")
+
+
 
 # Example Usage:
 gate_to_simulate = XOR2()
@@ -435,8 +487,4 @@ print(f"Initial Energy (nearest neighbors): {total_energy_nearest_neighbors(gate
 #plot_gate(g, title=f"{type(gate_to_simulate).__name__} Gate - Initial Configuration")
 
 
-for i in range(300):
-    distri(np.pi/6, np.pi/6, 6 )
-    distri(np.pi/2, np.pi/2, 6 )
-    distri(np.pi/2, np.pi/6, 6 )
-    distri(np.pi/6, np.pi/2, 6 )
+distri2(np.pi/2, np.pi/2, 100 )
